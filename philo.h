@@ -65,5 +65,7 @@ void *monitor(void *arg);
 void start_simulation(t_rules *rules);
 void cleanup(t_rules *rules);
 
+void take_forks(t_philo *philo);
+
 #endif
 
