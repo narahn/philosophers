@@ -11,6 +11,7 @@ SRCS = \
 	initialize.c \
 	monitor.c \
 	start_simulation.c \
+	cleanup.c \
 
 OBJS = $(SRCS:.c=.o)
 

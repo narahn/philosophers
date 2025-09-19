@@ -17,7 +17,9 @@ struct s_rules
     int time_to_eat;           // time (ms) a philo spends eating
     int time_to_sleep;         // time (ms) a philo spends sleeping
     int must_eat_count;        // how many times each philo must eat (optional)
-    int someone_died;          // flag to stop simulation
+    int someone_died;        // flag to stop simulation
+    int finished_eating;
+    pthread_mutex_t finished_mutex;
     pthread_mutex_t print_mutex; // lock for printing messages
     pthread_mutex_t *forks;    // array of forks
     long start_time;
@@ -61,6 +63,7 @@ void *monitor(void *arg);
 
 //start_simulation.c
 void start_simulation(t_rules *rules);
+void cleanup(t_rules *rules);
 
 #endif
 

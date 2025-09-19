@@ -1,11 +1,14 @@
 #include "philo.h"
 
-void philo_eat(t_philo *philo)
+void take_forks(t_philo *philo)
 {
+    if (philo->rules->someone_died)
+        return;
     pthread_mutex_lock(philo->left_fork);
     pthread_mutex_lock(&philo->rules->print_mutex);
-    printf("%ld %d has taken a fork\n",
-        current_time_ms() - philo->rules->start_time, philo->id);
+    if (!philo->rules->someone_died)
+        printf("%ld %d has taken a fork\n",
+            current_time_ms() - philo->rules->start_time, philo->id);
     pthread_mutex_unlock(&philo->rules->print_mutex);
     if (philo->rules->nb_philo == 1)
     {
@@ -15,20 +18,43 @@ void philo_eat(t_philo *philo)
     }
     pthread_mutex_lock(philo->right_fork);
     pthread_mutex_lock(&philo->rules->print_mutex);
-    printf("%ld %d has taken a fork\n",
-        current_time_ms() - philo->rules->start_time, philo->id);
+    if (!philo->rules->someone_died)
+        printf("%ld %d has taken a fork\n",
+            current_time_ms() - philo->rules->start_time, philo->id);
     pthread_mutex_unlock(&philo->rules->print_mutex);
+}
+
+void finish_eating(t_philo *philo)
+{
     pthread_mutex_lock(&philo->rules->print_mutex);
-    printf("%ld %d is eating\n",
-        current_time_ms() - philo->rules->start_time, philo->id);
+    if (!philo->rules->someone_died)
+        printf("%ld %d is eating\n",
+            current_time_ms() - philo->rules->start_time, philo->id);
     pthread_mutex_unlock(&philo->rules->print_mutex);
+
     philo->last_meal = current_time_ms();
     usleep(philo->rules->time_to_eat * 1000);
     pthread_mutex_unlock(philo->left_fork);
     pthread_mutex_unlock(philo->right_fork);
     philo->meals_eaten++;
+    if (philo->rules->must_eat_count != -1
+        && philo->meals_eaten == philo->rules->must_eat_count)
+    {
+        pthread_mutex_lock(&philo->rules->finished_mutex);
+        philo->rules->finished_eating++;
+        pthread_mutex_unlock(&philo->rules->finished_mutex);
+    }
 }
 
+void philo_eat(t_philo *philo)
+{
+    if (philo->rules->someone_died)
+        return;
+    take_forks(philo);
+    if (philo->rules->nb_philo == 1 || philo->rules->someone_died)
+        return;
+    finish_eating(philo);
+}
 
 void philo_sleep_think(t_philo *philo)
 {

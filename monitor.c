@@ -1,30 +1,53 @@
 # include "philo.h"
 
-#include "philo.h"
+int check_death(t_rules *rules)
+{
+    int i;
+    long now;
+
+    i = 0;
+    while (i < rules->nb_philo && !rules->someone_died)
+    {
+        now = current_time_ms();
+        if (now - rules->philos[i].last_meal > rules->time_to_die)
+        {
+            pthread_mutex_lock(&rules->print_mutex);
+            if (!rules->someone_died)
+            {
+                printf("%ld %d died\n",
+                    now - rules->start_time, rules->philos[i].id);
+                rules->someone_died = 1;
+            }
+            pthread_mutex_unlock(&rules->print_mutex);
+            return (1);
+        }
+        i++;
+    }
+    return (0);
+}
+
+int check_meals(t_rules *rules)
+{
+    if (rules->must_eat_count != -1
+        && rules->finished_eating == rules->nb_philo)
+    {
+        pthread_mutex_lock(&rules->print_mutex);
+        rules->someone_died = 1;
+        pthread_mutex_unlock(&rules->print_mutex);
+        return (1);
+    }
+    return (0);
+}
 
 void *monitor(void *arg)
 {
     t_rules *rules = (t_rules *)arg;
-    int i;
-    long now;
 
     while (!rules->someone_died)
     {
-        i = 0;
-        while (i < rules->nb_philo)
-        {
-            now = current_time_ms();
-            if (now - rules->philos[i].last_meal > rules->time_to_die)
-            {
-                pthread_mutex_lock(&rules->print_mutex);
-                printf("%ld %d died\n", now - rules->start_time, rules->philos[i].id);
-                rules->someone_died = 1;
-                pthread_mutex_unlock(&rules->print_mutex);
-                return NULL;
-            }
-            i++;
-        }
-        usleep(1000); // reduce CPU usage
+        if (check_death(rules) || check_meals(rules))
+            return (NULL);
+        usleep(1000);
     }
-    return NULL;
+    return (NULL);
 }

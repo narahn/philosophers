@@ -16,19 +16,9 @@ int init_mutexes(t_rules *rules)
     }
     if (pthread_mutex_init(&rules->print_mutex, NULL) != 0)
         return (1);
+    if (pthread_mutex_init(&rules->finished_mutex, NULL) != 0)
+        return (1);
     return (0);
-}
-
-void destroy_mutexes(t_rules *rules)
-{
-    int i = 0;
-    while (i < rules->nb_philo)
-    {
-        pthread_mutex_destroy(&rules->forks[i]);
-        i++;
-    }
-    pthread_mutex_destroy(&rules->print_mutex);
-    free(rules->forks);
 }
 
 void init_philosophers(t_rules *rules, t_philo *philos)
@@ -48,10 +38,4 @@ void init_philosophers(t_rules *rules, t_philo *philos)
         philos[i].last_meal = now;
         i++;
     }
-}
-
-void free_philos(t_philo *philos)
-{
-    if (philos)
-        free(philos);
 }

@@ -1,7 +1,5 @@
 #include "philo.h"
 
-#include "philo.h"
-
 int main(int argc, char **argv)
 {
     t_rules rules;
@@ -13,12 +11,11 @@ int main(int argc, char **argv)
     rules.philos = malloc(sizeof(t_philo) * rules.nb_philo);
     if (!rules.philos)
     {
-        destroy_mutexes(&rules);
+        cleanup(&rules);
         return (1);
     }
     init_philosophers(&rules, rules.philos);
     start_simulation(&rules);
-    destroy_mutexes(&rules);
-    free(rules.philos);
+    cleanup(&rules);
     return 0;
 }
