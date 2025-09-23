@@ -1,18 +1,14 @@
-NAME    = philo
-CC      = cc
-CFLAGS  = -Wall -Wextra -Werror -I.
+NAME = philo
+CC = cc
+CFLAGS = -Wall -Wextra -Werror -g -fsanitize=thread
 
-SRCS = \
-	main.c \
-	utils/ft_atoi.c \
-	parsing.c \
-	time_utils.c \
-	philo_routine.c \
-	initialize.c \
-	monitor.c \
-	start_simulation.c \
-	cleanup.c \
-	forks.c \
+SRCS = main.c \
+       utils.c \
+       parsing.c \
+       initialize.c \
+       action.c \
+       philo_routine.c \
+       monitor.c
 
 OBJS = $(SRCS:.c=.o)
 
@@ -21,11 +17,14 @@ all: $(NAME)
 $(NAME): $(OBJS)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJS)
 
+%.o: %.c philo.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
-	rm -rf $(OBJS)
+	rm -f $(OBJS)
 
 fclean: clean
-	rm -rf $(NAME)
+	rm -f $(NAME)
 
 re: fclean all
 

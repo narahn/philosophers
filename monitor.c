@@ -1,53 +1,68 @@
-# include "philo.h"
+#include "philo.h"
 
-int check_death(t_rules *rules)
+// Check if all philosophers finished eating
+int all_finished(t_philo *philos, t_rules *rules)
 {
-    int i;
-    long now;
+    int i = 0;
+    int finished = 1;
 
-    i = 0;
-    while (i < rules->nb_philo && !rules->someone_died)
+    while (i < rules->nb_philo)
     {
-        now = current_time_ms();
-        if (now - rules->philos[i].last_meal > rules->time_to_die)
-        {
-            pthread_mutex_lock(&rules->print_mutex);
-            if (!rules->someone_died)
-            {
-                printf("%ld %d died\n",
-                    now - rules->start_time, rules->philos[i].id);
-                rules->someone_died = 1;
-            }
-            pthread_mutex_unlock(&rules->print_mutex);
-            return (1);
-        }
+        pthread_mutex_lock(&rules->meal_mutex);
+        if (philos[i].meals_eaten < rules->must_eat_count)
+            finished = 0;
+        pthread_mutex_unlock(&rules->meal_mutex);
         i++;
     }
-    return (0);
+    return finished;
 }
 
-int check_meals(t_rules *rules)
+int check_death(t_philo *philo)
 {
-    if (rules->must_eat_count != -1
-        && rules->finished_eating == rules->nb_philo)
+    long last;
+
+    // Protect last_meal
+    pthread_mutex_lock(&philo->rules->meal_mutex);
+    last = philo->last_meal;
+    pthread_mutex_unlock(&philo->rules->meal_mutex);
+
+    long now = get_time_ms();
+
+    if (now - last > philo->rules->time_to_die)
     {
-        pthread_mutex_lock(&rules->print_mutex);
-        rules->someone_died = 1;
-        pthread_mutex_unlock(&rules->print_mutex);
-        return (1);
+        pthread_mutex_lock(&philo->rules->death_mutex);
+        if (!philo->rules->someone_died)
+        {
+            philo->rules->someone_died = 1;
+            pthread_mutex_lock(&philo->rules->print_mutex);
+            printf("%ld %d died\n", now - philo->rules->start_time, philo->id);
+            pthread_mutex_unlock(&philo->rules->print_mutex);
+        }
+        pthread_mutex_unlock(&philo->rules->death_mutex);
+        return 1;
     }
-    return (0);
+    return 0;
 }
 
-void *monitor(void *arg)
+void *monitor_routine(void *arg)
 {
-    t_rules *rules = (t_rules *)arg;
+    t_philo *philos = (t_philo *)arg;
+    t_rules *rules = philos[0].rules;
+    int i;
 
-    while (!rules->someone_died)
+    while (1)
     {
-        if (check_death(rules) || check_meals(rules))
-            return (NULL);
+        i = 0;
+        while (i < rules->nb_philo)
+        {
+            if (check_death(&philos[i]))
+                return NULL;
+            i++;
+        }
+
+        if (rules->must_eat_count > 0 && all_finished(philos, rules))
+            return NULL;
+
         usleep(1000);
     }
-    return (NULL);
 }

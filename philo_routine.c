@@ -1,69 +1,54 @@
 #include "philo.h"
 
-void finish_eating(t_philo *philo)
-{
-    pthread_mutex_lock(&philo->rules->print_mutex);
-    if (!philo->rules->someone_died)
-        printf("%ld %d is eating\n",
-            current_time_ms() - philo->rules->start_time, philo->id);
-    pthread_mutex_unlock(&philo->rules->print_mutex);
-    philo->last_meal = current_time_ms();
-    long start = current_time_ms();
-    while (!philo->rules->someone_died
-           && current_time_ms() - start < philo->rules->time_to_eat)
-        usleep(100);
-    pthread_mutex_unlock(philo->left_fork);
-    pthread_mutex_unlock(philo->right_fork);
-    philo->meals_eaten++;
-    if (philo->rules->must_eat_count != -1
-        && philo->meals_eaten == philo->rules->must_eat_count)
-    {
-        pthread_mutex_lock(&philo->rules->finished_mutex);
-        philo->rules->finished_eating++;
-        pthread_mutex_unlock(&philo->rules->finished_mutex);
-    }
-}
-
-void philo_eat(t_philo *philo)
-{
-    if (philo->rules->someone_died)
-        return;
-    take_forks(philo);
-    if (philo->rules->nb_philo == 1 || philo->rules->someone_died)
-        return;
-    finish_eating(philo);
-}
-
-void philo_sleep_think(t_philo *philo)
-{
-    pthread_mutex_lock(&philo->rules->print_mutex);
-    if (!philo->rules->someone_died)
-        printf("%ld %d is sleeping\n",
-            current_time_ms() - philo->rules->start_time, philo->id);
-    pthread_mutex_unlock(&philo->rules->print_mutex);
-    long start = current_time_ms();
-    while (!philo->rules->someone_died
-           && current_time_ms() - start < philo->rules->time_to_sleep)
-        usleep(100);
-    pthread_mutex_lock(&philo->rules->print_mutex);
-    if (!philo->rules->someone_died)
-        printf("%ld %d is thinking\n",
-            current_time_ms() - philo->rules->start_time, philo->id);
-    pthread_mutex_unlock(&philo->rules->print_mutex);
-}
-
 void *philo_routine(void *arg)
 {
     t_philo *philo = (t_philo *)arg;
+    t_rules *rules = philo->rules;
 
-    if (philo->id % 2 == 1)
-        usleep(1000);
-    while (!philo->rules->someone_died)
+    if (rules->nb_philo == 1)
     {
-        philo_eat(philo);
-        if (philo->rules->someone_died)
-            break;
-        philo_sleep_think(philo);
+        print_action(philo, "has taken a fork");
+        smart_sleep(rules->time_to_die, rules);
+        print_action(philo, "died");
+        pthread_mutex_lock(&rules->death_mutex);
+        rules->someone_died = 1;
+        pthread_mutex_unlock(&rules->death_mutex);
+        return NULL;
     }
-    return (NULL);
+
+    while (1)
+    {
+        pthread_mutex_lock(&rules->death_mutex);
+        int dead = rules->someone_died;
+        pthread_mutex_unlock(&rules->death_mutex);
+        if (dead)
+            break;
+
+        pthread_mutex_lock(&rules->finished_mutex);
+        int done = (rules->must_eat_count > 0 &&
+                    rules->finished_eating == rules->nb_philo);
+        pthread_mutex_unlock(&rules->finished_mutex);
+        if (done)
+            break;
+
+        philo_eat(philo);
+
+        pthread_mutex_lock(&rules->death_mutex);
+        dead = rules->someone_died;
+        pthread_mutex_unlock(&rules->death_mutex);
+        if (dead)
+            break;
+
+        print_action(philo, "is sleeping");
+        smart_sleep(rules->time_to_sleep, rules);
+
+        pthread_mutex_lock(&rules->death_mutex);
+        dead = rules->someone_died;
+        pthread_mutex_unlock(&rules->death_mutex);
+        if (dead)
+            break;
+
+        print_action(philo, "is thinking");
+    }
+    return NULL;
 }

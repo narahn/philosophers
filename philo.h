@@ -1,71 +1,50 @@
 #ifndef PHILO_H
-# define PHILO_H
+#define PHILO_H
 
-# include <pthread.h>
-# include <sys/time.h>
-# include <stdlib.h>
-# include <stdio.h>
-# include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <sys/time.h>
+#include <unistd.h>
 
-typedef struct s_philo t_philo;
 typedef struct s_rules t_rules;
+
+typedef struct s_philo
+{
+    int             id;
+    int             meals_eaten;
+    long            last_meal;
+    pthread_t       thread;
+    pthread_mutex_t *left_fork;
+    pthread_mutex_t *right_fork;
+    t_rules         *rules;
+}               t_philo;
 
 struct s_rules
 {
-    int nb_philo;              // number of philosophers
-    int time_to_die;           // time (ms) before a philo dies without eating
-    int time_to_eat;           // time (ms) a philo spends eating
-    int time_to_sleep;         // time (ms) a philo spends sleeping
-    int must_eat_count;        // how many times each philo must eat (optional)
-    int someone_died;        // flag to stop simulation
-    int finished_eating;
+    int             nb_philo;
+    long            time_to_die;
+    long            time_to_eat;
+    long            time_to_sleep;
+    int             must_eat_count;
+    int             someone_died;
+    int             finished_eating;
+    long            start_time;
+    pthread_mutex_t *forks;
+    pthread_mutex_t print_mutex;
+    pthread_mutex_t death_mutex;
+    pthread_mutex_t meal_mutex;
     pthread_mutex_t finished_mutex;
-    pthread_mutex_t print_mutex; // lock for printing messages
-    pthread_mutex_t *forks;    // array of forks
-    long start_time;
-    t_philo *philos;           // array of philosophers
 };
 
-struct s_philo
-{
-    int id;                    // philosopher number
-    int meals_eaten;
-    long last_meal;
-    pthread_t thread;          // the thread for this philosopher
-    pthread_mutex_t *left_fork;
-    pthread_mutex_t *right_fork;
-    t_rules *rules;            // pointer to the rules
-};
-
-
-
-
-// utils.c
+void philo_eat(t_philo *philo);
 int ft_atoi(const char *str);
-
-//parsing.c
-int parse_args(int argc, char **argv, t_rules *rules);
-
-//time_utils.c
-long current_time_ms(void);
-
-//philo_routine.c
-void *philo_routine(void *arg);
-
-//initialize.c
-void init_philosophers(t_rules *rules, t_philo *philos);
-int init_mutexes(t_rules *rules);
-void destroy_mutexes(t_rules *rules);
-void free_philos(t_philo *philos);
-
-// monitor.c
-void *monitor(void *arg);
-
-//start_simulation.c
-void start_simulation(t_rules *rules);
-void cleanup(t_rules *rules);
-
-void take_forks(t_philo *philo);
+int     parse_args(int argc, char **argv, t_rules *rules);
+int     init_all(t_rules *rules, t_philo **philos);
+long    get_time_ms(void);
+void    smart_sleep(long time, t_rules *rules);
+void    print_action(t_philo *philo, char *msg);
+void    *philo_routine(void *arg);
+void    *monitor_routine(void *arg);
 
 #endif
-
